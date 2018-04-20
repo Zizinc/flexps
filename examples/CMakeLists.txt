@@ -57,5 +57,5 @@ if(LIBHDFS3_FOUND)
   add_dependencies(LRExample ${external_project_dependencies})
 endif(LIBHDFS3_FOUND)
 
-# GBDTExample
-add_subdirectory(gbdt)
+# Ensemble Learner
+add_subdirectory(ensemble_learner)
