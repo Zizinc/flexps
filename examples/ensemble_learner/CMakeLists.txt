@@ -9,7 +9,7 @@ file(GLOB ensemble-learner-src-files
   src/learner/tree/gbdt.cpp
   src/learner/tree/lambda_mart.cpp
   src/learner/tree/regression_tree.cpp
-  src/metric/dcg_scorer.cpp
+  src/metric/ndcg_scorer.cpp
   src/metric/err_scorer.cpp
   src/parameter_server/parameter_server.cpp
   src/utilities/math_tools.cpp

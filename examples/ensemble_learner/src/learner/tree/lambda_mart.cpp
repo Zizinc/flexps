@@ -90,52 +90,17 @@ std::map<std::string, float> LambdaMART::evaluate() {
   }
   
   // Calculate ERR (larger is better)
-  float err = 0.0;
-  for (auto& kv_pair: qid_map) {
-    int qid = kv_pair.first;
-    auto& idx_vect = kv_pair.second;
+  this->err_scorer.set_qid_map(qid_map);
+  float err = this->err_scorer.calculate_score(score_vect, class_vect);
 
-    // Retrieve records with the same qid
-    std::vector<float> tmp_score_vect;
-    std::vector<float> tmp_class_vect;
-    for (auto& idx: idx_vect) {
-      tmp_score_vect.push_back(score_vect[idx]);
-      tmp_class_vect.push_back(class_vect[idx]);
-    }
-    err += this->err_scorer.calculate_score(tmp_score_vect, tmp_class_vect);
-  }
   predict_result["err"] = err;
   predict_result["num"] = score_vect.size();
   return predict_result;
 }
 
 std::map<std::string, std::vector<float>> LambdaMART::compute_lambda(std::map<int, std::vector<int>> qid_map, std::vector<float> vect, std::vector<float> score_vect) {
-  std::map<std::string, std::vector<float>> result_map;
-  std::vector<float> lambda_vect(vect.size(), 0.0);
-  std::vector<float> weight_vect(vect.size(), 0.0);
-
-  for (auto& kv_pair: qid_map) {
-    int qid = kv_pair.first;
-    auto& idx_vect = kv_pair.second;
-
-    // Retrieve records with the same qid
-    std::vector<float> tmp_vect;
-    std::vector<float> tmp_score_vect;
-    for (auto& idx: idx_vect) {
-      tmp_vect.push_back(vect[idx]);
-      tmp_score_vect.push_back(score_vect[idx]);
-    }
-    std::map<std::string, std::vector<float>> tmp_result_map = this->dcg_scorer.calculate_lambda_and_weight_vect(qid, tmp_vect, tmp_score_vect);
-    std::vector<float> tmp_lambda_vect = tmp_result_map["lambda_vect"];
-    std::vector<float> tmp_weight_vect = tmp_result_map["weight_vect"];
-    for (int i = 0; i < tmp_lambda_vect.size(); i++) {
-      lambda_vect[idx_vect[i]] = tmp_lambda_vect[i];
-      weight_vect[idx_vect[i]] = tmp_weight_vect[i];
-    }
-    result_map["lambda_vect"] = lambda_vect;
-    result_map["weight_vect"] = weight_vect;
-  }
-  return result_map;
+  this->ndcg_scorer.set_qid_map(qid_map);
+  return this->ndcg_scorer.calculate_lambda_and_weight_vect(vect, score_vect);
 }
 
 void LambdaMART::update_estimator_vect(RegressionTree& tree, std::vector<float>& estimator_vect, std::vector<std::vector<float>>& feat_vect_list) {
@@ -147,21 +112,8 @@ void LambdaMART::update_estimator_vect(RegressionTree& tree, std::vector<float>&
 }
 
 float LambdaMART::calculate_model_score(std::map<int, std::vector<int>> qid_map, std::vector<float> test_vect, std::vector<float> class_vect) {
-  float score = 0.0;
-
-  for (auto& kv_pair: qid_map) {
-    int qid = kv_pair.first;
-    auto& idx_vect = kv_pair.second;
-
-    // Retrieve records with the same qid
-    std::vector<float> tmp_test_vect;
-    std::vector<float> tmp_class_vect;
-    for (auto& idx: idx_vect) {
-      tmp_test_vect.push_back(test_vect[idx]);
-      tmp_class_vect.push_back(class_vect[idx]);
-    }
-    score += this->dcg_scorer.calculate_score(qid, tmp_test_vect, tmp_class_vect);
-  }
+  this->ndcg_scorer.set_qid_map(qid_map);
+  float score = this->ndcg_scorer.calculate_score(test_vect, class_vect);
   return score / class_vect.size();
 }
 
