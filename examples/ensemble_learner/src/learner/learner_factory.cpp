@@ -1,4 +1,5 @@
 #include "learner_factory.hpp"
+#include "examples/ensemble_learner/src/learner/tree/dart.hpp"
 #include "examples/ensemble_learner/src/learner/tree/gbdt.hpp"
 #include "examples/ensemble_learner/src/learner/tree/lambda_mart.hpp"
 
@@ -19,6 +20,9 @@ Learner *LearnerFactory::create_learner(LearnerType learner_type) {
       break;
     case LAMBDAMART_LEARNER:
       learner = new LambdaMART;
+      break;
+    case DART_LEARNER:
+      learner = new DART;
       break;
     default:
       LOG(INFO) << "Unknown learner type";

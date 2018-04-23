@@ -5,6 +5,7 @@ file(GLOB ensemble-learner-src-files
   src/data_loader/data_loader.cpp
   src/learner/learner.cpp
   src/learner/learner_factory.cpp
+  src/learner/tree/dart.cpp
   src/learner/tree/ensemble.cpp
   src/learner/tree/gbdt.cpp
   src/learner/tree/lambda_mart.cpp

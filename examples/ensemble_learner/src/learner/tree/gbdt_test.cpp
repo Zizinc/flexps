@@ -72,8 +72,8 @@ TEST_F(TestGBDT, SimpleRun) {
 	// Config gbdt
 	// Set params
     std::map<std::string, float> params = {
-      {"num_of_trees", 3},
-      {"max_depth", 3},
+      {"num_of_trees", 5},
+      {"max_depth", 1},
       {"complexity_of_leaf", 0.05},
       {"rank_fraction", 0.1},
       {"total_data_num", (float) 40},
@@ -169,8 +169,8 @@ TEST_F(TestGBDT, SingleNodeMultiThread) {
 	// Config gbdt
 	// Set params
     std::map<std::string, float> params = {
-      {"num_of_trees", 3},
-      {"max_depth", 3},
+      {"num_of_trees", 5},
+      {"max_depth", 1},
       {"complexity_of_leaf", 0.05},
       {"rank_fraction", 0.1},
       {"total_data_num", (float) 40},

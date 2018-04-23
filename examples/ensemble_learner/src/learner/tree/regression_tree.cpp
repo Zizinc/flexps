@@ -337,6 +337,17 @@ float RegressionTree::predict(std::vector<float>& vect) {
   }
 }
 
+void RegressionTree::update_leafs(float factor) {
+  if (this->is_leaf) {
+    this-> predict_val *= factor;
+  }
+  else {
+    this->left_child->update_leafs(factor);
+    this->right_child->update_leafs(factor);
+  }
+}
+
+// Helper function
 std::vector<Key> RegressionTree::push_quantile_sketch(int& ps_key_ptr, std::vector<float>& feat_vect, std::map<std::string, float>& min_max_feat, std::vector<float>& _push_val_vect) {
   float rank_fraction = this->params["rank_fraction"];
   float total_data_num = this->params["total_data_num"];

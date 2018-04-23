@@ -26,8 +26,9 @@ class RegressionTree {
     void find_best_candidate_split(std::vector<std::vector<float>>& candidate_split_vect_list);
     void find_predict_val();
     void reset_kv_tables();
-	void train_child();
-	float predict(std::vector<float>& vect);
+    void train_child();
+    float predict(std::vector<float>& vect);
+    void update_leafs(float factor);
     // Getter and setter ++
     std::map<std::string, std::vector<float>> get_additional_vect_map() { return this->additional_vect_map; }
     void set_additional_vect_map(std::map<std::string, std::vector<float>> additional_vect_map) { this->additional_vect_map = additional_vect_map; }
