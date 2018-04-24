@@ -15,6 +15,7 @@ RegressionTree::RegressionTree() {
   this->left_child = NULL;
   this->right_child = NULL;
   this->feat_id = -1;
+  this->prev_feat_id = -1;
   this->split_val = -1;
   this->max_gain = -std::numeric_limits<float>::infinity();
   this->depth = 0;
@@ -41,6 +42,14 @@ void RegressionTree::init(
   this->grad_vect = grad_vect;
   this->hess_vect = hess_vect;
   this->params = params;
+
+  if (this->prev_feat_id == -1) { // root
+    this->quantile_sketch_key_vect_list.resize(feat_vect_list.size());
+    this->quantile_sketch_val_vect_list.resize(feat_vect_list.size());
+    this->candidate_split_vect_list.resize(feat_vect_list.size());
+  }
+  this->grad_hess_key_vect_list.resize(feat_vect_list.size());
+  this->grad_hess_val_vect_list.resize(feat_vect_list.size());
 }
 
 void RegressionTree::set_kv_tables(std::map<std::string, std::unique_ptr<KVClientTable<float>>>* kv_tables) {
@@ -79,10 +88,21 @@ std::vector<std::vector<float>> RegressionTree::find_candidate_splits() {
   std::vector<Key> push_key_vect;
   std::vector<float> push_val_vect;
 
-  for (int f_id = 0; f_id < feat_vect_list.size(); f_id++) {
+  if (this->prev_feat_id == -1) { // Do all feat
+    for (int f_id = 0; f_id < feat_vect_list.size(); f_id++) {
+      push_key_vect = push_quantile_sketch(ps_key_ptr, feat_vect_list[f_id], min_max_feat_list[f_id], push_val_vect);
+      this->quantile_sketch_key_vect_list[f_id] = push_key_vect;
+      this->quantile_sketch_val_vect_list[f_id] = push_val_vect;
+      aggr_push_key_vect.insert(aggr_push_key_vect.end(), push_key_vect.begin(), push_key_vect.end());
+      aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
+    }
+  }
+  else { // Do one feat only
+    int f_id = this->prev_feat_id;
     push_key_vect = push_quantile_sketch(ps_key_ptr, feat_vect_list[f_id], min_max_feat_list[f_id], push_val_vect);
-    this->quantile_sketch_key_vect_list.push_back(push_key_vect);
-    this->quantile_sketch_val_vect_list.push_back(push_val_vect);
+    // Overwrite push_key_vect if it is not the first run
+    push_key_vect = this->quantile_sketch_key_vect_list[f_id];
+    this->quantile_sketch_val_vect_list[f_id] = push_val_vect;
     aggr_push_key_vect.insert(aggr_push_key_vect.end(), push_key_vect.begin(), push_key_vect.end());
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   }
@@ -95,22 +115,35 @@ std::vector<std::vector<float>> RegressionTree::find_candidate_splits() {
   std::vector<Key> pull_key_vect;
   std::vector<float> pull_val_vect;
 
-  for (int f_id = 0; f_id < this->quantile_sketch_key_vect_list.size(); f_id++) {
+  if (this->prev_feat_id == -1) {  // Do all feat
+    for (int f_id = 0; f_id < this->quantile_sketch_key_vect_list.size(); f_id++) {
+      std::vector<Key> key_vect = this->quantile_sketch_key_vect_list[f_id];
+      pull_key_vect.insert(pull_key_vect.end(), key_vect.begin(), key_vect.end());
+    }
+  }
+  else { // Do one feat only
+    int f_id = this->prev_feat_id;
     std::vector<Key> key_vect = this->quantile_sketch_key_vect_list[f_id];
     pull_key_vect.insert(pull_key_vect.end(), key_vect.begin(), key_vect.end());
-    
   }
   table->Get(pull_key_vect, &pull_val_vect);
   table->Clock();
-  
-  std::vector<std::vector<float>> candidate_split_vect_list;
-  int sketch_num_per_feat = pull_val_vect.size() / feat_vect_list.size(); 
-  for (int f_id = 0; f_id < feat_vect_list.size(); f_id++) {
-    std::vector<float> sketch_hist_vect(pull_val_vect.begin() + (f_id * sketch_num_per_feat), pull_val_vect.begin() + ((f_id + 1) * sketch_num_per_feat));
-    std::vector<float> candidate_split_vect = find_candidate_split(sketch_hist_vect, min_max_feat_list[f_id]);
-    candidate_split_vect_list.push_back(candidate_split_vect);
+
+  if (this->prev_feat_id == -1) {
+    int sketch_num_per_feat = pull_val_vect.size() / feat_vect_list.size(); 
+    for (int f_id = 0; f_id < feat_vect_list.size(); f_id++) {
+      std::vector<float> sketch_hist_vect(pull_val_vect.begin() + (f_id * sketch_num_per_feat), pull_val_vect.begin() + ((f_id + 1) * sketch_num_per_feat));
+      std::vector<float> candidate_split_vect = find_candidate_split(sketch_hist_vect, min_max_feat_list[f_id]);
+      this->candidate_split_vect_list[f_id] = candidate_split_vect;
+    }
   }
-  return candidate_split_vect_list;
+  else {
+    int f_id = this->prev_feat_id;
+    std::vector<float> sketch_hist_vect = pull_val_vect;
+    std::vector<float> candidate_split_vect = find_candidate_split(sketch_hist_vect, min_max_feat_list[f_id]);
+    this->candidate_split_vect_list[f_id] = candidate_split_vect;
+  }
+  return this->candidate_split_vect_list;
 }
 
 void RegressionTree::find_best_candidate_split(std::vector<std::vector<float>>& candidate_split_vect_list) {
@@ -129,8 +162,8 @@ void RegressionTree::find_best_candidate_split(std::vector<std::vector<float>>& 
     // Ordering of push_key_vect:
     // left grad, left hess, right grad, right hess
     push_key_vect = push_local_grad_hess(ps_key_ptr, feat_vect_list[f_id], candidate_split_vect_list[f_id], grad_vect, hess_vect, push_val_vect);
-    this->grad_hess_key_vect_list.push_back(push_key_vect);
-    this->grad_hess_val_vect_list.push_back(push_val_vect);
+    this->grad_hess_key_vect_list[f_id] = push_key_vect;
+    this->grad_hess_val_vect_list[f_id] = push_val_vect;
     aggr_push_key_vect.insert(aggr_push_key_vect.end(), push_key_vect.begin(), push_key_vect.end());
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   }
@@ -202,13 +235,25 @@ void RegressionTree::reset_kv_tables() {
   std::vector<Key> aggr_push_key_vect;
   std::vector<float> aggr_push_val_vect;
   std::vector<float> push_val_vect;
-  for (int i = 0; i < this->quantile_sketch_key_vect_list.size(); i++) {
+  if (this->prev_feat_id == -1) {
+    for (int i = 0; i < this->quantile_sketch_key_vect_list.size(); i++) {
+      std::vector<float> inv_val_vect;
+      for (int j = 0; j < this->quantile_sketch_key_vect_list[i].size(); j++) {
+        inv_val_vect.push_back(this->quantile_sketch_val_vect_list[i][j] * -1.0);
+      }
+      push_val_vect = inv_val_vect;
+      aggr_push_key_vect.insert(aggr_push_key_vect.end(), quantile_sketch_key_vect_list[i].begin(), quantile_sketch_key_vect_list[i].end());
+      aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
+    }
+  }
+  else {
+    int f_id = this->prev_feat_id;
     std::vector<float> inv_val_vect;
-    for (int j = 0; j < this->quantile_sketch_key_vect_list[i].size(); j++) {
-      inv_val_vect.push_back(this->quantile_sketch_val_vect_list[i][j] * -1.0);
+    for (int j = 0; j < this->quantile_sketch_key_vect_list[f_id].size(); j++) {
+      inv_val_vect.push_back(this->quantile_sketch_val_vect_list[f_id][j] * -1.0);
     }
     push_val_vect = inv_val_vect;
-    aggr_push_key_vect.insert(aggr_push_key_vect.end(), quantile_sketch_key_vect_list[i].begin(), quantile_sketch_key_vect_list[i].end());
+    aggr_push_key_vect.insert(aggr_push_key_vect.end(), quantile_sketch_key_vect_list[f_id].begin(), quantile_sketch_key_vect_list[f_id].end());
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   }
   
@@ -292,6 +337,18 @@ void RegressionTree::train_child() {
   // Config
   this->left_child = new RegressionTree;
   this->right_child = new RegressionTree;
+  this->left_child->information_caching(
+    this->feat_id,
+    this->quantile_sketch_key_vect_list,
+    this->quantile_sketch_val_vect_list,
+    this->candidate_split_vect_list
+    );
+  this->right_child->information_caching(
+    this->feat_id,
+    this->quantile_sketch_key_vect_list,
+    this->quantile_sketch_val_vect_list,
+    this->candidate_split_vect_list
+    );
   this->left_child->init(
     learner_type,
     left_feat_vect_list, 
@@ -312,7 +369,7 @@ void RegressionTree::train_child() {
   this->right_child->set_kv_tables(this->kv_tables);
   this->left_child->set_depth(this->depth + 1);
   this->right_child->set_depth(this->depth + 1);
-  
+
   switch(this->learner_type) {
     case LAMBDAMART_LEARNER:
       split_and_set_additional_vect_map();
@@ -345,6 +402,18 @@ void RegressionTree::update_leafs(float factor) {
     this->left_child->update_leafs(factor);
     this->right_child->update_leafs(factor);
   }
+}
+
+void RegressionTree::information_caching(
+        int prev_feat_id,
+        std::vector<std::vector<Key>> quantile_sketch_key_vect_list,
+        std::vector<std::vector<float>> quantile_sketch_val_vect_list,
+        std::vector<std::vector<float>> candidate_split_vect_list
+        ) {
+  this->prev_feat_id = prev_feat_id;
+  this->quantile_sketch_key_vect_list = quantile_sketch_key_vect_list;
+  this->quantile_sketch_val_vect_list = quantile_sketch_val_vect_list;
+  this->candidate_split_vect_list = candidate_split_vect_list;
 }
 
 // Helper function

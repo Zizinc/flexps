@@ -27,7 +27,8 @@ TEST_F(TestGBDT, SimpleRun) {
   Node my_node = nodes[0];
   
   // Load data
-  DataLoader train_data_loader("/home/ubuntu/Dataset/40_train.dat");
+  //DataLoader train_data_loader("/home/ubuntu/Dataset/40_train.dat");
+  DataLoader train_data_loader("/home/ubuntu/Dataset/cadata_test.dat");
   
   // Find min and max for each feature
   // Store to data loader
@@ -49,7 +50,7 @@ TEST_F(TestGBDT, SimpleRun) {
     engine,
     0,
     (uint64_t) 1,
-    7, 
+    train_data_loader.get_feat_vect_list().size(), 
     0.1);
 
   // Start ML
@@ -73,10 +74,10 @@ TEST_F(TestGBDT, SimpleRun) {
 	// Set params
     std::map<std::string, float> params = {
       {"num_of_trees", 5},
-      {"max_depth", 1},
+      {"max_depth", 3},
       {"complexity_of_leaf", 0.05},
       {"rank_fraction", 0.1},
-      {"total_data_num", (float) 40},
+      {"total_data_num", (float) train_data_loader.get_class_vect().size()},
       // worker info
       {"node_id", 0},
       {"worker_id", 0}
@@ -109,6 +110,7 @@ TEST_F(TestGBDT, SimpleRun) {
   engine.StopEverything();
 }
 
+/*
 TEST_F(TestGBDT, SingleNodeMultiThread) {
   // Remark: running sample on single node multithreads
   
@@ -209,6 +211,7 @@ TEST_F(TestGBDT, SingleNodeMultiThread) {
   
   engine.StopEverything();
 }
+*/
 
 }
 

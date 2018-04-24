@@ -29,6 +29,12 @@ class RegressionTree {
     void train_child();
     float predict(std::vector<float>& vect);
     void update_leafs(float factor);
+    void information_caching(
+        int prev_feat_id,
+        std::vector<std::vector<Key>> quantile_sketch_key_vect_list,
+        std::vector<std::vector<float>> quantile_sketch_val_vect_list,
+        std::vector<std::vector<float>> candidate_split_vect_list
+        );
     // Getter and setter ++
     std::map<std::string, std::vector<float>> get_additional_vect_map() { return this->additional_vect_map; }
     void set_additional_vect_map(std::map<std::string, std::vector<float>> additional_vect_map) { this->additional_vect_map = additional_vect_map; }
@@ -61,6 +67,7 @@ class RegressionTree {
     bool is_leaf;
 
     int feat_id;
+    int prev_feat_id;
     float split_val;
     float max_gain;
 
@@ -73,8 +80,9 @@ class RegressionTree {
     // the first is sum, the second is num
     std::vector<Key> local_grad_sum_key_vect_list;
 
-    // ps val set (for reset propose)
+    // ps val set (for reset propose and information caching for next nodes)
     std::vector<std::vector<float>> quantile_sketch_val_vect_list;
+    std::vector<std::vector<float>> candidate_split_vect_list;
     std::vector<std::vector<float>> grad_hess_val_vect_list;
     std::vector<float> local_grad_sum_val_vect_list;
 };
