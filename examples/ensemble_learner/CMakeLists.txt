@@ -14,6 +14,7 @@ file(GLOB ensemble-learner-src-files
   src/metric/err_scorer.cpp
   src/parameter_server/parameter_server.cpp
   src/utilities/math_tools.cpp
+  src/utilities/timer.cpp
   )
 add_library(ensemble-learner-objs OBJECT ${ensemble-learner-src-files})
 set_property(TARGET ensemble-learner-objs PROPERTY CXX_STANDARD 11)

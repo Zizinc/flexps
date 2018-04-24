@@ -78,6 +78,7 @@ TEST_F(TestGBDT, SimpleRun) {
       {"complexity_of_leaf", 0.05},
       {"rank_fraction", 0.1},
       {"total_data_num", (float) train_data_loader.get_class_vect().size()},
+      {"learning_rate", 1.0},
       // worker info
       {"node_id", 0},
       {"worker_id", 0}

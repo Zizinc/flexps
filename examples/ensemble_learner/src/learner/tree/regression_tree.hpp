@@ -1,6 +1,7 @@
 #pragma once
 
 #include "examples/ensemble_learner/src/learner/LEARNER_TYPE.hpp"
+#include "examples/ensemble_learner/src/utilities/timer.hpp"
 
 #include <map>
 #include <string>
@@ -38,6 +39,7 @@ class RegressionTree {
     // Getter and setter ++
     std::map<std::string, std::vector<float>> get_additional_vect_map() { return this->additional_vect_map; }
     void set_additional_vect_map(std::map<std::string, std::vector<float>> additional_vect_map) { this->additional_vect_map = additional_vect_map; }
+    void set_timer(Timer *timer) { this->timer = timer; }
     // Getter and setter --
   protected:
     std::vector<Key> push_quantile_sketch(int& ps_key_ptr, std::vector<float>& feat_vect, std::map<std::string, float>& min_max_feat, std::vector<float>& _push_val_vect);
@@ -56,6 +58,7 @@ class RegressionTree {
     std::vector<float> grad_vect; 
     std::vector<float> hess_vect;
     std::map<std::string, std::unique_ptr<KVClientTable<float>>>* kv_tables;
+    Timer *timer;
     
     // Additional vector values
     std::map<std::string, std::vector<float>> additional_vect_map;

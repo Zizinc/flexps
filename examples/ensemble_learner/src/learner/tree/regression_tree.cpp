@@ -5,6 +5,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
+#include <algorithm>
 #include <numeric>
 #include <math.h>
 #include <sstream>
@@ -21,6 +22,7 @@ RegressionTree::RegressionTree() {
   this->depth = 0;
   this->predict_val = 0.0;
   this->is_leaf = false;
+  this->timer = NULL;
 }
 
 void RegressionTree::init(
@@ -88,6 +90,10 @@ std::vector<std::vector<float>> RegressionTree::find_candidate_splits() {
   std::vector<Key> push_key_vect;
   std::vector<float> push_val_vect;
 
+  if (this->timer) {
+    this->timer->start_clock("computation_time");
+  }
+
   if (this->prev_feat_id == -1) { // Do all feat
     for (int f_id = 0; f_id < feat_vect_list.size(); f_id++) {
       push_key_vect = push_quantile_sketch(ps_key_ptr, feat_vect_list[f_id], min_max_feat_list[f_id], push_val_vect);
@@ -107,10 +113,15 @@ std::vector<std::vector<float>> RegressionTree::find_candidate_splits() {
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   }
   
+  if (this->timer) {
+    this->timer->add_time("computation_time");
+    this->timer->start_clock("communication_time");
+  }
+
   EXPECT_NE(aggr_push_key_vect.size(), 0);
   table->Add(aggr_push_key_vect, aggr_push_val_vect);
   table->Clock();
-  
+
   // Step 2: Pull global quantile sketch result and find split candidates
   std::vector<Key> pull_key_vect;
   std::vector<float> pull_val_vect;
@@ -126,8 +137,14 @@ std::vector<std::vector<float>> RegressionTree::find_candidate_splits() {
     std::vector<Key> key_vect = this->quantile_sketch_key_vect_list[f_id];
     pull_key_vect.insert(pull_key_vect.end(), key_vect.begin(), key_vect.end());
   }
+
   table->Get(pull_key_vect, &pull_val_vect);
   table->Clock();
+
+  if (this->timer) {
+    this->timer->add_time("communication_time");
+    this->timer->start_clock("computation_time");
+  }
 
   if (this->prev_feat_id == -1) {
     int sketch_num_per_feat = pull_val_vect.size() / feat_vect_list.size(); 
@@ -143,6 +160,11 @@ std::vector<std::vector<float>> RegressionTree::find_candidate_splits() {
     std::vector<float> candidate_split_vect = find_candidate_split(sketch_hist_vect, min_max_feat_list[f_id]);
     this->candidate_split_vect_list[f_id] = candidate_split_vect;
   }
+
+  if (this->timer) {
+    this->timer->add_time("computation_time");
+  }
+
   return this->candidate_split_vect_list;
 }
 
@@ -157,7 +179,11 @@ void RegressionTree::find_best_candidate_split(std::vector<std::vector<float>>& 
   std::vector<float> aggr_push_val_vect;
   std::vector<Key> push_key_vect;
   std::vector<float> push_val_vect;
-  
+
+  if (this->timer) {
+    this->timer->start_clock("computation_time");
+  }
+
   for (int f_id = 0; f_id < feat_vect_list.size(); f_id++) {
     // Ordering of push_key_vect:
     // left grad, left hess, right grad, right hess
@@ -168,6 +194,12 @@ void RegressionTree::find_best_candidate_split(std::vector<std::vector<float>>& 
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   }
   ASSERT_NE(aggr_push_key_vect.size(), 0);
+
+  if (this->timer) {
+    this->timer->add_time("computation_time");
+    this->timer->start_clock("communication_time");
+  }
+
   table->Add(aggr_push_key_vect, aggr_push_val_vect);
   table->Clock();
   
@@ -182,7 +214,12 @@ void RegressionTree::find_best_candidate_split(std::vector<std::vector<float>>& 
   }
   table->Get(pull_key_vect, &pull_val_vect);
   table->Clock();
-  
+
+  if (this->timer) {
+    this->timer->add_time("communication_time");
+    this->timer->start_clock("computation_time");
+  }
+
   int grad_hess_num_per_feat = ((1 / this->params["rank_fraction"]) - 1) * 4;
   for (int f_id = 0; f_id < feat_vect_list.size(); f_id++) {
     std::vector<float> grad_hess_vect(pull_val_vect.begin() + (f_id * grad_hess_num_per_feat), pull_val_vect.begin() + ((f_id + 1) * grad_hess_num_per_feat));
@@ -194,6 +231,10 @@ void RegressionTree::find_best_candidate_split(std::vector<std::vector<float>>& 
       this->feat_id = f_id;
       this->split_val = candidate_split_vect_list[f_id][best_split["best_candidate_id"]];
     }
+  }
+
+  if (this->timer) {
+    this->timer->add_time("computation_time");
   }
 }
 
@@ -207,6 +248,10 @@ void RegressionTree::find_predict_val() {
   std::vector<Key> push_key_vect;
   std::vector<float> push_val_vect;
 
+  if (this->timer) {
+    this->timer->start_clock("computation_time");
+  }
+
   push_key_vect = push_local_grad_sum(ps_key_ptr, push_val_vect);
   
   this->local_grad_sum_key_vect_list = push_key_vect;
@@ -216,6 +261,12 @@ void RegressionTree::find_predict_val() {
   aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   
   ASSERT_NE(aggr_push_key_vect.size(), 0);
+
+  if (this->timer) {
+    this->timer->add_time("computation_time");
+    this->timer->start_clock("communication_time");
+  }
+
   table->Add(aggr_push_key_vect, aggr_push_val_vect);
   table->Clock();
   
@@ -226,11 +277,18 @@ void RegressionTree::find_predict_val() {
   table->Get(pull_key_vect, &pull_val_vect);
   table->Clock();
   
+  if (this->timer) {
+    this->timer->add_time("communication_time");
+  }
+
   this->predict_val = pull_val_vect[0] / pull_val_vect[1];
 }
 
 void RegressionTree::reset_kv_tables() {
-  
+  if (this->timer) {
+    this->timer->start_clock("computation_time");
+  }
+
   // Reset quantile_sketch table
   std::vector<Key> aggr_push_key_vect;
   std::vector<float> aggr_push_val_vect;
@@ -257,6 +315,11 @@ void RegressionTree::reset_kv_tables() {
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   }
   
+  if (this->timer) {
+    this->timer->add_time("computation_time");
+    this->timer->start_clock("communication_time");
+  }
+
   (*kv_tables)["quantile_sketch"]->Add(aggr_push_key_vect, aggr_push_val_vect);
   (*kv_tables)["quantile_sketch"]->Clock();
   
@@ -265,6 +328,11 @@ void RegressionTree::reset_kv_tables() {
   (*kv_tables)["quantile_sketch"]->Clock();
   EXPECT_NEAR(std::accumulate(pull_val_vect.begin(), pull_val_vect.end(), 0.0), 0.0, 0.00001);
   
+  if (this->timer) {
+    this->timer->add_time("communication_time");
+    this->timer->start_clock("computation_time");
+  }
+
   // Reset grad_and_hess table
   aggr_push_key_vect.clear();
   aggr_push_val_vect.clear();
@@ -279,12 +347,21 @@ void RegressionTree::reset_kv_tables() {
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   }
   
+  if (this->timer) {
+    this->timer->add_time("computation_time");
+    this->timer->start_clock("communication_time");
+  }
+
   (*kv_tables)["grad_and_hess"]->Add(aggr_push_key_vect, aggr_push_val_vect);
   (*kv_tables)["grad_and_hess"]->Clock();
   
   (*kv_tables)["grad_and_hess"]->Get(aggr_push_key_vect, &pull_val_vect);
   (*kv_tables)["grad_and_hess"]->Clock();
   EXPECT_NEAR(std::accumulate(pull_val_vect.begin(), pull_val_vect.end(), 0.0), 0.0, 0.00001);
+
+  if (this->timer) {
+    this->timer->add_time("communication_time");
+  }
 
   // Reset grad_sum_and_count table
   if (check_to_stop()) {
@@ -299,12 +376,20 @@ void RegressionTree::reset_kv_tables() {
     aggr_push_key_vect.insert(aggr_push_key_vect.end(), local_grad_sum_key_vect_list.begin(), local_grad_sum_key_vect_list.end());
     aggr_push_val_vect.insert(aggr_push_val_vect.end(), push_val_vect.begin(), push_val_vect.end());
   
+    if (this->timer) {
+      this->timer->start_clock("communication_time");
+    }
+
     ASSERT_NE(aggr_push_key_vect.size(), 0);
     (*kv_tables)["grad_sum_and_count"]->Add(aggr_push_key_vect, aggr_push_val_vect);
     (*kv_tables)["grad_sum_and_count"]->Clock();
     (*kv_tables)["grad_sum_and_count"]->Get(aggr_push_key_vect, &pull_val_vect);
     (*kv_tables)["grad_sum_and_count"]->Clock();
     EXPECT_NEAR(std::accumulate(pull_val_vect.begin(), pull_val_vect.end(), 0.0), 0.0, 0.00001);
+
+    if (this->timer) {
+      this->timer->add_time("communication_time");
+    }
   }
 }
 
@@ -365,6 +450,8 @@ void RegressionTree::train_child() {
     right_hess_vect,
     params
   );
+  this->left_child->set_timer(this->timer);
+  this->right_child->set_timer(this->timer);
   this->left_child->set_kv_tables(this->kv_tables);
   this->right_child->set_kv_tables(this->kv_tables);
   this->left_child->set_depth(this->depth + 1);
@@ -382,7 +469,11 @@ void RegressionTree::train_child() {
 
 float RegressionTree::predict(std::vector<float>& vect) {
   if (this->is_leaf) {
-    return this->predict_val;
+    float learning_rate = 1.0;
+    if (this->params.count("learning_rate")) {
+      learning_rate = this->params["learning_rate"];
+    }
+    return learning_rate * this->predict_val;
   }
   else {
     if (vect[this->feat_id] < this->split_val) {

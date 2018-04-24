@@ -1,5 +1,6 @@
 #include "gbdt.hpp"
 #include "examples/ensemble_learner/src/utilities/math_tools.hpp"
+#include "examples/ensemble_learner/src/utilities/timer.hpp"
 
 #include "glog/logging.h"
 #include "worker/kv_client_table.hpp"
@@ -24,6 +25,8 @@ void GBDT::learn() {
   
   float num_of_trees = this->params["num_of_trees"];
   LOG(INFO) << "Begin training GBDT, number of trees: " << num_of_trees;
+  Timer timer;
+  timer.start_clock("total_time");
   for (int i = 0; i < num_of_trees; i++) {
     
 	  // Step 1: Update residual vect
@@ -41,8 +44,9 @@ void GBDT::learn() {
       params
     );
     regression_tree.set_kv_tables(kv_tables); //kv_tables is defined in Learner
-
+    regression_tree.set_timer(&timer);
     regression_tree.train();
+    
     update_estimator_vect(regression_tree, estimator_vect, feat_vect_list);
     
     // Step 3: Save the tree to ensemble
@@ -55,6 +59,10 @@ void GBDT::learn() {
     LOG(INFO) << "Node Id = [" << this->params["node_id"] << "], Worker Id = [" << this->params["worker_id"]
       << "]: Train set - SSE = [" << SSE << "], NUM = [" << NUM << "]";
   }
+  timer.add_time("total_time");
+  LOG(INFO) << "Computation time: " << timer.get_time("computation_time");
+  LOG(INFO) << "Communication time: " << timer.get_time("communcation_time");
+  LOG(INFO) << "Total train time: " << timer.get_time("total_time");
 }
 
 std::map<std::string, float> GBDT::evaluate() {
