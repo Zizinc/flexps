@@ -60,18 +60,18 @@ TEST_F(TestGBDT, SimpleRun) {
   task.SetTables(tid_vect);
   task.SetLambda([& parameter_server, &train_data_loader](const Info& info){
     // Get KV tables
-	std::map<std::string, std::unique_ptr<KVClientTable<float>>>* name_to_kv_tables;
-	name_to_kv_tables = new std::map<std::string, std::unique_ptr<KVClientTable<float>>>();
-	parameter_server.get_kv_tables(info, name_to_kv_tables);
-	
+    std::map<std::string, std::unique_ptr<KVClientTable<float>>>* name_to_kv_tables;
+    name_to_kv_tables = new std::map<std::string, std::unique_ptr<KVClientTable<float>>>();
+    parameter_server.get_kv_tables(info, name_to_kv_tables);
+
     // Create gbdt from factory
     LearnerFactory* learner_factory;
     Learner* gbdt;
     learner_factory = new LearnerFactory;
     gbdt = learner_factory->create_learner(GBDT_LEARNER);
-	
-	// Config gbdt
-	// Set params
+  
+    // Config gbdt
+    // Set params
     std::map<std::string, float> params = {
       {"num_of_trees", 5},
       {"max_depth", 3},
@@ -83,28 +83,28 @@ TEST_F(TestGBDT, SimpleRun) {
       {"node_id", 0},
       {"worker_id", 0}
     };
-	gbdt->set_params(params);
-	
-	// Set options
-	std::map<std::string, std::string> options = {
+    gbdt->set_params(params);
+  
+    // Set options
+    std::map<std::string, std::string> options = {
       {"loss_function", "square_error"}
     };
-	gbdt->set_options(options);
-	
-	// Set KV tables
-	gbdt->init(name_to_kv_tables);
-	
-	// Set DataLoader
-	gbdt->set_training_dataset(train_data_loader);
-	gbdt->set_test_dataset(train_data_loader);
-	
-	// Start learn
-	gbdt->learn();
-	
-	// Evaluate
-	std::map<std::string, float> predict_result = gbdt->evaluate();
-	LOG(INFO) << "sse = " << predict_result["sse"];
-	LOG(INFO) << "num = " << predict_result["num"];
+    gbdt->set_options(options);
+  
+    // Set KV tables
+    gbdt->init(name_to_kv_tables);
+  
+    // Set DataLoader
+    gbdt->set_training_dataset(train_data_loader);
+    gbdt->set_test_dataset(train_data_loader);
+  
+    // Start learn
+    gbdt->learn();
+  
+    // Evaluate
+    std::map<std::string, float> predict_result = gbdt->evaluate();
+    LOG(INFO) << "sse = " << predict_result["sse"];
+    LOG(INFO) << "num = " << predict_result["num"];
   });
   engine.Run(task);
 
@@ -156,21 +156,21 @@ TEST_F(TestGBDT, SingleNodeMultiThread) {
   all_predict_result["num"] = 0;
   task.SetLambda([& parameter_server, & train_data_loader, & all_predict_result](const Info& info){
     // Resize dataset by worker id
-	auto local_train_data_loader = train_data_loader.create_dataloader_by_worker_id(info.local_id, 3);
-	
-	// Get KV tables
-	std::map<std::string, std::unique_ptr<KVClientTable<float>>>* name_to_kv_tables;
-	name_to_kv_tables = new std::map<std::string, std::unique_ptr<KVClientTable<float>>>();
-	parameter_server.get_kv_tables(info, name_to_kv_tables);
-	
+  auto local_train_data_loader = train_data_loader.create_dataloader_by_worker_id(info.local_id, 3);
+  
+  // Get KV tables
+  std::map<std::string, std::unique_ptr<KVClientTable<float>>>* name_to_kv_tables;
+  name_to_kv_tables = new std::map<std::string, std::unique_ptr<KVClientTable<float>>>();
+  parameter_server.get_kv_tables(info, name_to_kv_tables);
+  
     // Create gbdt from factory
     LearnerFactory* learner_factory;
     Learner* gbdt;
     learner_factory = new LearnerFactory;
     gbdt = learner_factory->create_learner(GBDT_LEARNER);
-	
-	// Config gbdt
-	// Set params
+  
+  // Config gbdt
+  // Set params
     std::map<std::string, float> params = {
       {"num_of_trees", 5},
       {"max_depth", 1},
@@ -181,27 +181,27 @@ TEST_F(TestGBDT, SingleNodeMultiThread) {
       {"node_id", 0},
       {"worker_id", info.local_id}
     };
-	gbdt->set_params(params);
-	
-	// Set options
-	std::map<std::string, std::string> options = {
+  gbdt->set_params(params);
+  
+  // Set options
+  std::map<std::string, std::string> options = {
       {"loss_function", "square_error"}
     };
-	gbdt->set_options(options);
-	
-	// Set KV tables
-	gbdt->init(name_to_kv_tables);
-	
-	// Set DataLoader
-	gbdt->set_training_dataset(local_train_data_loader);
-	gbdt->set_test_dataset(local_train_data_loader);
-	
-	// Start learn
-	gbdt->learn();
-	
-	// Evaluate
-	std::map<std::string, float> predict_result = gbdt->evaluate();
-	// aggregate all result from workers in this node
+  gbdt->set_options(options);
+  
+  // Set KV tables
+  gbdt->init(name_to_kv_tables);
+  
+  // Set DataLoader
+  gbdt->set_training_dataset(local_train_data_loader);
+  gbdt->set_test_dataset(local_train_data_loader);
+  
+  // Start learn
+  gbdt->learn();
+  
+  // Evaluate
+  std::map<std::string, float> predict_result = gbdt->evaluate();
+  // aggregate all result from workers in this node
     all_predict_result["sse"] += predict_result["sse"];
     all_predict_result["num"] += predict_result["num"];
   });

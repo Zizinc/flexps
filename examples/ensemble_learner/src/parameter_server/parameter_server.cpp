@@ -51,7 +51,7 @@ void ParameterServer::get_kv_tables(const Info& info, std::map<std::string, std:
     int tid = it->second;
 
     auto table = info.CreateKVClientTable<float>(tid);
-	(*name_to_kv_tables)[table_name] = std::move(table);
+    (*name_to_kv_tables)[table_name] = std::move(table);
   }
 }
 

@@ -19,3 +19,10 @@ file(GLOB ensemble-learner-src-files
 add_library(ensemble-learner-objs OBJECT ${ensemble-learner-src-files})
 set_property(TARGET ensemble-learner-objs PROPERTY CXX_STANDARD 11)
 add_dependencies(ensemble-learner-objs ${external_project_dependencies})
+
+add_executable(GBDTExample gbdt_example.cpp)
+target_link_libraries(GBDTExample flexps)
+target_link_libraries(GBDTExample ${HUSKY_EXTERNAL_LIB})
+target_link_libraries(GBDTExample ${GTEST_LIBRARIES})
+set_property(TARGET GBDTExample PROPERTY CXX_STANDARD 11)
+add_dependencies(GBDTExample ${external_project_dependencies})

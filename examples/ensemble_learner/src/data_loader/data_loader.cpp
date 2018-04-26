@@ -215,10 +215,12 @@ DataLoader DataLoader::create_dataloader_by_worker_id(int worker_id, int worker_
     resized_class_vect,
     resized_feat_vect_list,
     this->min_max_feat_list,
-    this->num_of_record,
+    resized_class_vect.size(), //this->num_of_record,
     this->num_of_feat,
     this->data_format
   );
+  LOG(INFO) << "worker_id = " << worker_id << ", worker_num = " << worker_num 
+    << ",  global data num = " << this->class_vect.size() << ", local data num = " << resized_class_vect.size();
   return local_data_loader;
 }
 

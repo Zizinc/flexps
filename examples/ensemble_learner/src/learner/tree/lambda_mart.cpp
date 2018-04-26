@@ -70,9 +70,9 @@ std::map<std::string, float> LambdaMART::evaluate() {
   std::map<std::string, float> predict_result;
 
   // Unpack data from DataLoader
-  std::vector<float> class_vect = this->train_data_loader.get_class_vect();
-  std::vector<int> qid_vect = this->train_data_loader.get_qid_vect();
-  std::vector<std::vector<float>> feat_vect_list = this->train_data_loader.get_feat_vect_list();
+  std::vector<float> class_vect = this->test_data_loader.get_class_vect();
+  std::vector<int> qid_vect = this->test_data_loader.get_qid_vect();
+  std::vector<std::vector<float>> feat_vect_list = this->test_data_loader.get_feat_vect_list();
 
   // Find qid mapping
   std::map<int, std::vector<int>> qid_map;
