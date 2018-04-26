@@ -61,7 +61,7 @@ void GBDT::learn() {
   }
   timer.add_time("total_time");
   LOG(INFO) << "Computation time: " << timer.get_time("computation_time");
-  LOG(INFO) << "Communication time: " << timer.get_time("communcation_time");
+  LOG(INFO) << "Communication time: " << timer.get_time("communication_time");
   LOG(INFO) << "Total train time: " << timer.get_time("total_time");
 }
 

@@ -20,9 +20,18 @@ add_library(ensemble-learner-objs OBJECT ${ensemble-learner-src-files})
 set_property(TARGET ensemble-learner-objs PROPERTY CXX_STANDARD 11)
 add_dependencies(ensemble-learner-objs ${external_project_dependencies})
 
+# GBDT Example
 add_executable(GBDTExample gbdt_example.cpp)
 target_link_libraries(GBDTExample flexps)
 target_link_libraries(GBDTExample ${HUSKY_EXTERNAL_LIB})
 target_link_libraries(GBDTExample ${GTEST_LIBRARIES})
 set_property(TARGET GBDTExample PROPERTY CXX_STANDARD 11)
 add_dependencies(GBDTExample ${external_project_dependencies})
+
+# DART Example
+add_executable(DARTExample dart_example.cpp)
+target_link_libraries(DARTExample flexps)
+target_link_libraries(DARTExample ${HUSKY_EXTERNAL_LIB})
+target_link_libraries(DARTExample ${GTEST_LIBRARIES})
+set_property(TARGET DARTExample PROPERTY CXX_STANDARD 11)
+add_dependencies(DARTExample ${external_project_dependencies})
