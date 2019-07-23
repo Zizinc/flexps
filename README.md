@@ -2,6 +2,10 @@
 
 [![Build Status](https://travis-ci.com/Yuzhen11/flexps.svg?token=q177tztPAL6tTAyRzSkG&branch=master)](https://travis-ci.com/Yuzhen11/flexps)
 
+201907 Update: upload some paper works on GBDT alogrithm for parameter server.
+Please note this is just a branch from https://github.com/Yuzhen11/flexps with some of my algorithm implementation, Yuzhen is the owner and the first author of FlexPS.
+
+========================================================================================================================
 FlexPS is a minimum Parameter-Server based system, supporting efficient worker-server interaction using various consistency model (BSP/SSP/ASP). 
 
 The introductory paper of FlexPS has been published in PVLDB'18 ([paper](http://www.vldb.org/pvldb/vol11/p566-huang.pdf)). The team for this work consists of Yuzhen Huang, Tatiana Jin, Yidi Wu, Zhenkun Cai, Xiao Yan, Fan Yang, Jinfeng Li, Yuying Guo, James Cheng. We also would like to acknowledge the contributions of Zhanhao Liu, Shuo Tu, Ruoyu Wu to this work.
